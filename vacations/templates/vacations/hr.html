@@ -1,0 +1,175 @@
+{% extends 'vacations/base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold">HR: Управление персоналом</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active">Графики и заявки 2026</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 border-start border-primary border-4 py-2">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Сотрудники</div>
+                    <h3 class="fw-bold mb-0">{{ total_employees }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 border-start border-success border-4 py-2">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Заявок на отпуск</div>
+                    <h3 class="fw-bold mb-0 text-success">{{ submitted_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 border-start border-danger border-4 py-2">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase fw-bold">Без заявок</div>
+                    <h3 class="fw-bold mb-0 text-danger">{{ pending_users.count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-body bg-light rounded">
+                    <form method="post" class="row g-3 align-items-center">
+                        {% csrf_token %}
+                        <div class="col-auto">
+                            <label class="small text-muted mb-1">Год</label>
+                            <input type="number" name="year" value="2026" class="form-control fw-bold" style="width: 100px;">
+                        </div>
+
+                        <div class="col-auto">
+                            <label class="small text-muted mb-1">Отдел</label>
+                            <select name="department" class="form-select fw-bold">
+                                <option value="all">Все отделы</option>
+                                {% for dept in departments_list %}
+                                    <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <label class="small text-muted mb-1">Остаются на работе (мин.)</label>
+                            <input type="number" name="min_employees" value="2" min="1" class="form-control fw-bold" style="width: 120px;">
+                        </div>
+
+                        <div class="col-auto mt-auto">
+                            <button type="submit" name="action" value="generate" class="btn btn-primary">
+                                Рассчитать график
+                            </button>
+                            <button type="submit" name="action" value="export_csv" class="btn btn-success">
+                                <i class="bi bi-file-earmark-excel"></i> Выгрузить в CSV
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-dark text-white fw-bold py-3">
+                    <i class="bi bi-file-earmark-arrow-up"></i> Загрузить рабочий график (смены)
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">Формат CSV: одна колонка с датами (ДД.ММ.ГГГГ). Разделитель — точка с запятой.</p>
+                    <form method="post" enctype="multipart/form-data" class="row g-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="upload_work_schedule">
+                        <div class="col-md-6">
+                            <select name="employee_id" class="form-select" required>
+                                <option value="" disabled selected>Выберите сотрудника...</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}">{{ u.full_name|default:u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="file" name="schedule_file" class="form-control" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-dark w-100">Загрузить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th>Приоритеты</th>
+                                <th class="text-center">Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in all_requests %}
+                            <tr>
+                                <td class="py-3">
+                                    <div class="fw-bold">{{ req.user.full_name|default:req.user.username }}</div>
+                                    <div class="text-muted small">{{ req.user.department }}</div>
+                                </td>
+                                <td>
+                                    {% for period in req.periods.all|dictsort:"priority" %}
+                                        <div class="small mb-1">
+                                            <span class="badge bg-light text-dark border">Пр. {{ period.priority }}</span>
+                                            {{ period.date_start|date:"d.m.Y" }} — {{ period.date_end|date:"d.m.Y" }}
+                                        </div>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-center">
+                                    {% if req.status == 'submitted' %}
+                                        <span class="badge rounded-pill bg-warning text-dark">Ожидает</span>
+                                    {% else %}
+                                        <span class="badge rounded-pill bg-success">В графике</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white fw-bold py-3">Не подали заявку</div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for user in pending_users %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                            <span class="small">{{ user.full_name|default:user.username }}</span>
+                            <span class="badge bg-danger">!</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-center py-4 text-success">Все заявки поданы</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

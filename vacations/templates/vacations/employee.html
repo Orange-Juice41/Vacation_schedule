@@ -1,0 +1,147 @@
+{% extends 'vacations/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-calendar3 text-primary"></i> Мой рабочий график</h5>
+                </div>
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+                <div class="card-footer bg-light small">
+                    <span class="me-3"><i class="bi bi-circle-fill text-primary"></i> — Рабочая смена</span>
+                    <span><i class="bi bi-square-fill text-success"></i> — Утвержденный отпуск</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            {% if my_schedule %}
+            <div class="card border-success shadow-sm mb-4">
+                <div class="card-body">
+                    <h6 class="text-success fw-bold"><i class="bi bi-check-circle"></i> Отпуск подтвержден</h6>
+                    <p class="mb-0 small">{{ my_schedule.date_start|date:"d.m.Y" }} — {{ my_schedule.date_end|date:"d.m.Y" }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not req %}
+                <!-- БЛОК РЕКОМЕНДАЦИЙ -->
+                {% if recommendations %}
+                <div class="card shadow-sm border-0 mb-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-magic"></i> Рекомендуемые даты (14 дн.)</h6>
+                        <div class="list-group list-group-flush bg-transparent">
+                            {% for res in recommendations %}
+                            <div class="list-group-item bg-transparent px-0 py-2 border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small fw-medium">{{ res.start|date:"d.m" }} — {{ res.end|date:"d.m.Y" }}</span>
+                                    <span class="badge bg-white text-primary border border-primary-subtle">Свободно</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="text-muted extra-small mt-2 mb-0" style="font-size: 0.75rem;">
+                            *В эти даты в вашем отделе пока никто не планирует отпуск.
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Заявка на отпуск 2026</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-uppercase">Вариант №1 (Приоритет)</label>
+                                <input type="date" name="start_1" class="form-control mb-2" min="{{ tomorrow }}" required>
+                                <input type="date" name="end_1" class="form-control" min="{{ tomorrow }}" required>
+                            </div>
+                            <hr>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-uppercase text-muted">Вариант №2 (Запасной)</label>
+                                <input type="date" name="start_2" class="form-control mb-2" min="{{ tomorrow }}">
+                                <input type="date" name="end_2" class="form-control" min="{{ tomorrow }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Отправить заявку</button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card shadow-sm border-0 bg-light text-center py-4">
+                    <div class="card-body">
+                        <i class="bi bi-clock-history display-4 text-warning"></i>
+                        <h5 class="mt-3">Заявка подана</h5>
+                        <p class="text-muted small">Статус: {{ req.get_status_display }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+
+        const workDays = {{ work_days_json|safe }};
+        const vacationStart = "{{ my_schedule.date_start|date:'Y-m-d' }}";
+        const vacationEnd = "{{ my_schedule.date_end|date:'Y-m-d' }}";
+
+        const events = workDays.map(date => ({
+            start: date,
+            display: 'background',
+            backgroundColor: '#cfe2ff',
+            borderColor: '#0d6efd'
+        }));
+
+        if (vacationStart && vacationEnd) {
+            events.push({
+                title: 'ОТПУСК',
+                start: vacationStart,
+                end: vacationEnd,
+                backgroundColor: '#198754',
+                borderColor: '#198754',
+                allDay: true
+            });
+        }
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ru',
+            firstDay: 1,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: ''
+            },
+            buttonText: { today: 'Сегодня' },
+            events: events,
+            height: 'auto'
+        });
+        calendar.render();
+    });
+</script>
+
+<style>
+    .fc-day-today { background: #fffcf0 !important; }
+    .fc-event-title { font-weight: bold; font-size: 0.8em; }
+    .extra-small { font-size: 0.7rem; }
+</style>
+{% endblock %}
