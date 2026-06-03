@@ -32,6 +32,7 @@ class VacationSchedule(models.Model):
     status = models.CharField(max_length=20, default='draft')
     min_employees = models.IntegerField(default=2)
 
+
     class Meta:
         # ДОБАВЬ это: теперь база разрешит несколько графиков на 2026 год,
         # но только если у них разные отделы.
