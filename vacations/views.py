@@ -16,9 +16,7 @@ from .services import generate_optimal_schedule
 from .forms import CustomUserForm
 
 
-# ==========================================
 # 1. МАРШРУТИЗАЦИЯ (DASHBOARD)
-# ==========================================
 @login_required
 def dashboard(request):
     if request.user.is_admin():
@@ -29,9 +27,7 @@ def dashboard(request):
         return redirect('employee_panel')
 
 
-# ==========================================
 # 2. ПАНЕЛЬ АДМИНИСТРАТОРА (УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ)
-# ==========================================
 @login_required
 def admin_panel(request):
     if not request.user.is_admin():
@@ -84,9 +80,7 @@ def user_delete(request, user_id):
     return redirect('admin_panel')
 
 
-# ==========================================
 # 3. ПАНЕЛЬ СОТРУДНИКА
-# ==========================================
 @login_required
 def employee_panel(request):
     if request.user.role != 'employee':
@@ -95,7 +89,7 @@ def employee_panel(request):
     tomorrow = (timezone.now().date() + timedelta(days=1))
     existing_request = VacationRequest.objects.filter(user=request.user).first()
 
-    # --- Обработка подачи заявки ---
+    #Обработка подачи заявки
     if request.method == 'POST' and not existing_request:
         s1 = request.POST.get('start_1')
         e1 = request.POST.get('end_1')
@@ -127,7 +121,7 @@ def employee_panel(request):
         messages.success(request, "Заявка успешно подана!")
         return redirect('employee_panel')
 
-    # --- Поиск рекомендованных дат (3 окна по 14 дней) ---
+    #Поиск рекомендованных дат (3 окна по 14 дней)
     recommendations = []
     if not existing_request:
         dept_vacs = ScheduleItem.objects.filter(
@@ -150,7 +144,7 @@ def employee_panel(request):
             else:
                 curr += timedelta(days=1)
 
-    # --- Данные для календаря и графика ---
+    #Данные для календаря и график
     my_schedule = ScheduleItem.objects.filter(user=request.user, schedule__status='published').first()
     work_days = list(WorkDay.objects.filter(user=request.user).values_list('date', flat=True))
     work_days_json = json.dumps([d.isoformat() for d in work_days])
@@ -164,9 +158,7 @@ def employee_panel(request):
     })
 
 
-# ==========================================
 # 4. ПАНЕЛЬ HR
-# ==========================================
 @login_required
 def hr_panel(request):
     if not request.user.is_hr():
@@ -182,15 +174,13 @@ def hr_panel(request):
 
         if action == 'generate':
             min_emp = int(request.POST.get('min_employees', 2))
-            selected_dept = request.POST.get('department')  # Читаем выбранный отдел из формы
+            selected_dept = request.POST.get('department')
 
-            # Если выбрали "Все отделы"
             if selected_dept == 'all':
                 for dept in departments_list:
                     generate_optimal_schedule(year, dept, min_employees=min_emp)
                 messages.success(request, f"Графики для всех отделов на {year} год успешно сформированы!")
 
-            # Если выбрали конкретный отдел
             else:
                 generate_optimal_schedule(year, selected_dept, min_employees=min_emp)
                 messages.success(request, f"График отпусков для отдела «{selected_dept}» успешно сформирован!")
@@ -254,7 +244,7 @@ def hr_panel(request):
         'submitted_count': VacationRequest.objects.count(),
         'pending_users': pending_users,
         'users': employees,
-        'departments_list': departments_list,  # <--- ДОБАВЛЯЕМ ПЕРЕДАЧУ ОТДЕЛОВ В ШАБЛОН
+        'departments_list': departments_list,
     })
 
 

@@ -23,10 +23,8 @@ class User(AbstractUser):
 
 
 class VacationSchedule(models.Model):
-    # УБЕРИ параметр unique=True, если он тут есть!
     year = models.IntegerField(verbose_name="Год")
 
-    # Твое поле отдела (название может немного отличаться, используй свое)
     department = models.CharField(max_length=100, verbose_name="Отдел")
 
     status = models.CharField(max_length=20, default='draft')
@@ -34,8 +32,7 @@ class VacationSchedule(models.Model):
 
 
     class Meta:
-        # ДОБАВЬ это: теперь база разрешит несколько графиков на 2026 год,
-        # но только если у них разные отделы.
+
         unique_together = ('year', 'department')
 
     def __str__(self):

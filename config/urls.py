@@ -23,7 +23,6 @@ urlpatterns = [
         }
     ), name='password_reset'),
 
-
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='registration/reset_message.html',
         extra_context={
