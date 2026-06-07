@@ -124,23 +124,41 @@ def employee_panel(request):
     #Поиск рекомендованных дат (3 окна по 14 дней)
     recommendations = []
     if not existing_request:
+        # 1. Берем опубликованные графики (как было раньше)
         dept_vacs = ScheduleItem.objects.filter(
             user__department=request.user.department,
             schedule__status='published'
         )
+
+        # 2. Добавляем поданные заявки (статус 'submitted')
+        # Ищем периоды, связанные с заявками нашего отдела
+        pending_periods = RequestedPeriod.objects.filter(
+            request__user__department=request.user.department,
+            request__status='submitted'
+        )
+
         curr = tomorrow
         limit_date = curr + timedelta(days=365)
 
         while len(recommendations) < 3 and curr < limit_date:
             w_start = curr
-            w_end = w_start + timedelta(days=13)  # Период 14 дней
+            w_end = w_start + timedelta(days=13)
 
-            # Проверяем, свободен ли отдел в эти даты
-            has_conflict = dept_vacs.filter(date_start__lte=w_end, date_end__gte=w_start).exists()
+            # Проверяем конфликты в графике
+            has_conflict_schedule = dept_vacs.filter(
+                date_start__lte=w_end,
+                date_end__gte=w_start
+            ).exists()
 
-            if not has_conflict:
+            # Проверяем конфликты в поданных заявках
+            has_conflict_requests = pending_periods.filter(
+                date_start__lte=w_end,
+                date_end__gte=w_start
+            ).exists()
+
+            if not has_conflict_schedule and not has_conflict_requests:
                 recommendations.append({'start': w_start, 'end': w_end})
-                curr = w_end + timedelta(days=1)  # Сдвигаем, чтобы не было пересечений между рекомендациями
+                curr = w_end + timedelta(days=1)
             else:
                 curr += timedelta(days=1)
 
@@ -254,3 +272,18 @@ class MyLoginView(LoginView):
     def form_invalid(self, form):
         form.add_error(None, "Неверный логин или пароль")
         return super().form_invalid(form)
+
+
+@login_required
+def cancel_vacation_request(request, request_id):
+    # Получаем заявку, убедившись, что она принадлежит текущему пользователю
+    vacation_req = get_object_or_404(VacationRequest, id=request_id, user=request.user)
+
+    # Проверяем, можно ли её отменить (например, статус только 'submitted')
+    if vacation_req.status == 'submitted':
+        vacation_req.delete()  # Удаляем заявку
+        messages.success(request, "Ваша заявка была успешно отменена.")
+    else:
+        messages.error(request, "Невозможно отменить заявку: она уже находится в обработке или принята.")
+
+    return redirect('employee_panel')

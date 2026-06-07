@@ -9,4 +9,5 @@ urlpatterns = [
     path('admin-panel/user/add/', views.user_create, name='user_create'),
     path('admin-panel/user/<int:user_id>/edit/', views.user_edit, name='user_edit'),
     path('admin-panel/user/<int:user_id>/delete/', views.user_delete, name='user_delete'),
+    path('cancel-request/<int:request_id>/', views.cancel_vacation_request, name='cancel_vacation_request'),
 ]
