@@ -23,6 +23,9 @@ class CustomUserForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        if 'full_name' in self.fields:
+            self.fields['full_name'].required = True
+
         if self.instance and self.instance.pk:
             del self.fields['password']
         else:

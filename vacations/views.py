@@ -130,7 +130,6 @@ def employee_panel(request):
             schedule__status='published'
         )
 
-        # 2. Добавляем поданные заявки (статус 'submitted')
         # Ищем периоды, связанные с заявками нашего отдела
         pending_periods = RequestedPeriod.objects.filter(
             request__user__department=request.user.department,
@@ -276,10 +275,8 @@ class MyLoginView(LoginView):
 
 @login_required
 def cancel_vacation_request(request, request_id):
-    # Получаем заявку, убедившись, что она принадлежит текущему пользователю
     vacation_req = get_object_or_404(VacationRequest, id=request_id, user=request.user)
 
-    # Проверяем, можно ли её отменить (например, статус только 'submitted')
     if vacation_req.status == 'submitted':
         vacation_req.delete()  # Удаляем заявку
         messages.success(request, "Ваша заявка была успешно отменена.")
